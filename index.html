@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Policies Map</title>
+</head>
+
+<body>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBu1jf5dunP8iVLyqcIEqhjts7MEwZ_390&extension=.js"></script> 
+<script src="https://cdn.mapkit.io/v1/infobox.js"></script> 
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet"> 
+<link href="https://cdn.mapkit.io/v1/infobox.css" rel="stylesheet" > 
+ 
+<script> 
+    google.maps.event.addDomListener(window, 'load', init);
+    var map, markersArray = [];
+    var prev;
+
+    function bindInfoWindow(marker, map, location) {
+        google.maps.event.addListener(marker, 'click', function() {
+            function close(location) {
+                location.ib.close();
+                location.infoWindowVisible = false;
+                location.ib = null;
+            }
+
+            if (location.infoWindowVisible === true) {
+                close(location);
+            } 
+            else {
+                if(prev && prev.infoWindowVisible === true){
+                    close(prev);
+                }
+                prev = location;
+                markersArray.forEach(function(loc, index){
+                    if (loc.ib && loc.ib !== null) {
+                        close(loc);
+                    }
+                });
+
+                var boxText = document.createElement('div');
+                boxText.style.cssText = 'background: #fff;';
+                boxText.classList.add('md-whiteframe-2dp');
+
+                function buildPieces(location, el, part, icon) {
+                    if (location[part] === '') {
+                        return '';
+                    } else if (location.iw[part]) {
+                        switch(el){
+                            case 'photo':
+                                if (location.photo){
+                                    return '<div class="iw-photo" style="background-image: url(' + location.photo + ');"></div>';
+                                 } else {
+                                    return '';
+                                }
+                                break;
+                            case 'iw-toolbar':
+                                return '<div class="iw-toolbar"><h3 class="md-subhead">' + location.title + '</h3></div>';
+                                break;
+                            case 'div':
+                                switch(part){
+                                    case 'email':
+                                        return '<div class="iw-details"><i class="material-icons" style="color:#4285f4;"><img src="//cdn.mapkit.io/v1/icons/' + icon + '.svg"/></i><span><a href="mailto:' + location.email + '" target="_blank">' + location.email + '</a></span></div>';
+                                        break;
+                                    case 'web':
+                                        return '<div class="iw-details"><i class="material-icons" style="color:#4285f4;"><img src="//cdn.mapkit.io/v1/icons/' + icon + '.svg"/></i><span><a href="' + location.web + '" target="_blank">' + location.web_formatted + '</a></span></div>';
+                                        break;
+                                    case 'desc':
+                                        return '<label class="iw-desc" for="cb_details"><input type="checkbox" id="cb_details"/><h3 class="iw-x-details">Detalles</h3><i class="material-icons toggle-open-details"><img src="//cdn.mapkit.io/v1/icons/' + icon + '.svg"/></i><p class="iw-x-details">' + location.desc + '</p></label>';
+                                        break;
+                                    default:
+                                        return '<div class="iw-details"><i class="material-icons"><img src="//cdn.mapkit.io/v1/icons/' + icon + '.svg"/></i><span>' + location[part] + '</span></div>';
+                                    break;
+                                }
+                                break;
+                            case 'open_hours':
+                                var items = '';
+                                if (location.open_hours.length > 0){
+                                    for (var i = 0; i < location.open_hours.length; ++i) {
+                                        if (i !== 0){
+                                            items += '<li><strong>' + location.open_hours[i].day + '</strong><strong>' + location.open_hours[i].hours +'</strong></li>';
+                                        }
+                                        var first = '<li><label for="cb_hours"><input type="checkbox" id="cb_hours"/><strong>' + location.open_hours[0].day + '</strong><strong>' + location.open_hours[0].hours +'</strong><i class="material-icons toggle-open-hours"><img src="//cdn.mapkit.io/v1/icons/keyboard_arrow_down.svg"/></i><ul>' + items + '</ul></label></li>';
+                                    }
+                                    return '<div class="iw-list"><i class="material-icons first-material-icons" style="color:#4285f4;"><img src="//cdn.mapkit.io/v1/icons/' + icon + '.svg"/></i><ul>' + first + '</ul></div>';
+                                 } else {
+                                    return '';
+                                }
+                                break;
+                         }
+                    } else {
+                        return '';
+                    }
+                }
+
+                boxText.innerHTML = 
+                    buildPieces(location, 'photo', 'photo', '') +
+                    buildPieces(location, 'iw-toolbar', 'title', '') +
+                    buildPieces(location, 'div', 'address', 'location_on') +
+                    buildPieces(location, 'div', 'web', 'public') +
+                    buildPieces(location, 'div', 'email', 'email') +
+                    buildPieces(location, 'div', 'tel', 'phone') +
+                    buildPieces(location, 'div', 'int_tel', 'phone') +
+                    buildPieces(location, 'open_hours', 'open_hours', 'access_time') +
+                    buildPieces(location, 'div', 'desc', 'keyboard_arrow_down');
+
+                var myOptions = {
+                    alignBottom: true,
+                    content: boxText,
+                    disableAutoPan: true,
+                    maxWidth: 0,
+                    pixelOffset: new google.maps.Size(-140, -40),
+                    zIndex: null,
+                    boxStyle: {
+                        opacity: 1,
+                        width: '400px'
+                    },
+                    closeBoxMargin: '10px',
+                    infoBoxClearance: new google.maps.Size(1, 1),
+                    isHidden: false,
+                    pane: 'floatPane',
+                    enableEventPropagation: false
+                };
+
+                location.ib = new InfoBox(myOptions);
+                location.ib.open(map, marker);
+                location.infoWindowVisible = true;
+            }
+        });
+    }
+
+    function init() {
+        var mapOptions = {
+            center: new google.maps.LatLng(-11.602025448975173,-77.61838063977052),
+            zoom: 3,
+            gestureHandling: 'auto',
+            fullscreenControl: false,
+            zoomControl: true,
+            disableDoubleClickZoom: true,
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+                style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+            },
+            scaleControl: true,
+            scrollwheel: true,
+            streetViewControl: true,
+            draggable : true,
+            clickableIcons: false,
+            mapTypeControlOptions: {
+                position: google.maps.ControlPosition.TOP_LEFT
+            },
+            mapTypeId: google.maps.MapTypeId.HYBRID,
+        }
+        var mapElement = document.getElementById('mapkit-9166');
+        var map = new google.maps.Map(mapElement, mapOptions);
+        var locations = [
+            {"title":"Decreto 117/2016 - Ministerio de Modernización","address":"Argentina","desc":"La política Argentina establece como responsable al Minsiterio de Modernización","tel":"","int_tel":"","email":"","web":"http://servicios.infoleg.gob.ar/infolegInternet/anexos/255000-259999/257755/norma.htm","web_formatted":"servicios.infoleg.gob.ar","open":"","time":"","lat":-38.416097,"lng":-63.616671999999994,"vicinity":"Argentina","open_hours":"","marker":"https://dd-cdn.multiscreensite.com/flags/flags_iso/32/ar.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"Decreto 8777/2016 - Contraloría General de la Unión","address":"Brasil","desc":"Brazil establece una serie de datos prioritatios a liberar tales cómo datos financieros, de gestión e infraestructura","tel":"","int_tel":"","email":"","web":"http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8777.htm","web_formatted":"planalto.gov.br","open":"","time":"","lat":-14.235004,"lng":-51.92527999999999,"photo":"","vicinity":"Brasil","open_hours":"","marker":"https://www.mylan.com/-/media/images/corporate/shared/flags-of-the-world/flag_brazil.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"Decreto 40199 - Minsiterio de la Presidencia","address":"Costa Rica","desc":"La política de Costa Rica incorpora los principios de la Carta Internacional de Datos Abiertos","tel":"","int_tel":"","email":"","web":"https://www.imprentanacional.go.cr/pub/2017/05/12/ALCA102_12_05_2017.pdf","web_formatted":"imprentanacional.go.cr","open":"","time":"","lat":9.748916999999999,"lng":-83.75342799999999,"vicinity":"Costa Rica","open_hours":"","marker":"https://revealname-3744.kxcdn.com/assets/images/flags/32/cr.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"Decreto 2573/2014 - Ministerio de Tecnología de la Información y Comunicación","address":"Colombia","desc":"La política de Colombia se establece en un marco general sobre gobierno digital","tel":"","int_tel":"","email":"","web":"https://www.mintic.gov.co/portal/604/articles-14673_documento.pdf","web_formatted":"mintic.gov.co","open":"","time":"","lat":4.570868,"lng":-74.29733299999998,"vicinity":"Colombia","open_hours":"","marker":"https://revealname-3744.kxcdn.com/assets/images/flags/32/co.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"DOF 20/2/2015 - Presidencia","address":"México","desc":"La política de México es una de las pioneras en América Latina","tel":"","int_tel":"","email":"","web":"http://www.dof.gob.mx/nota_detalle.php?codigo=5382838&fecha=20/02/2015","web_formatted":"dof.gob.mx","open":"","time":"","lat":23.634501,"lng":-102.55278399999997,"vicinity":"México","open_hours":"","marker":"http://www.xcaret.com.mx/img/flags/espaniol.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"Decreto Supremo 16/2017 - Presidencia Consejo de Minsitros","address":"Perú","desc":"La política de Perú establece un período de 5 años de implementación","tel":"","int_tel":"","email":"","web":"http://busquedas.elperuano.pe/normaslegales/decreto-supremo-que-aprueba-la-estrategia-nacional-de-datos-decreto-supremo-n-016-2017-pcm-1484961-4/","web_formatted":"busquedas.elperuano.pe","open":"","time":"","lat":-9.189966999999998,"lng":-75.015152,"vicinity":"Perú","open_hours":"","marker":"https://revealname-3744.kxcdn.com/assets/images/flags/32/pe.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}},{"title":"Decreto 54/2017 - Agencia para el Gobierno Electrónico y la Sociedad de la Información","address":"Uruguay","desc":"La política de Uruguay amplia la regulación en base a la ley de acceso a la información pública","tel":"","int_tel":"","email":"","web":"https://www.agesic.gub.uy/innovaportal/file/6176/1/cons_min_477.pdf","web_formatted":"agesic.gub.uy","open":"","time":"","lat":-32.522779,"lng":-55.76583500000004,"vicinity":"Uruguay","open_hours":"","marker":"https://revealname-3744.kxcdn.com/assets/images/flags/32/uy.png","iw":{"address":false,"desc":true,"email":false,"enable":true,"int_tel":false,"open":true,"open_hours":true,"photo":true,"tel":false,"title":true,"web":true}}
+        ];
+        for (i = 0; i < locations.length; i++) {
+            marker = new google.maps.Marker({
+                icon: locations[i].marker,
+                position: new google.maps.LatLng(locations[i].lat, locations[i].lng),
+                map: map,
+                title: locations[i].title,
+                address: locations[i].address,
+                desc: locations[i].desc,
+                tel: locations[i].tel,
+                int_tel: locations[i].int_tel,
+                vicinity: locations[i].vicinity,
+                open: locations[i].open,
+                open_hours: locations[i].open_hours,
+                photo: locations[i].photo,
+                time: locations[i].time,
+                email: locations[i].email,
+                web: locations[i].web,
+                iw: locations[i].iw
+            });
+            markersArray.push(marker);
+
+            if (locations[i].iw.enable === true){
+                bindInfoWindow(marker, map, locations[i]);
+            }
+        }
+    }
+</script>
+<style>
+    #mapkit-9166 {
+        height:600px;
+        width:800px;
+    }
+</style>
+
+<div id='mapkit-9166'></div>
+
+</body>
+</html>
